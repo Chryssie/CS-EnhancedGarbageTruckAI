@@ -7,7 +7,7 @@ namespace EnhancedGarbageTruckAI
     {
         private Settings()
         {
-            Tag = "[ARIS] Enhanced Garbage Truck AI";
+            Tag = "Enhanced Garbage Truck AI [Fixed for v1.2+]";
 
             DispatchGap = 5;
         }

@@ -61,7 +61,9 @@ namespace EnhancedGarbageTruckAI
             if (_checkups.Count >= 20)
                 return;
 
-            if (WithinPrimaryRange(id))
+            SkylinesOverwatch.Data data = SkylinesOverwatch.Data.Instance;
+
+            if (WithinPrimaryRange(id) && data.IsPrivateBuilding(id))
                 _checkups.Add(id);
         }
 
@@ -193,8 +195,8 @@ namespace EnhancedGarbageTruckAI
 
             if (target == 0)
             {
-                if ((current != 0 && !SkylinesOverwatch.Data.Instance.IsBuildingWithGarbage(current) && WithinPrimaryRange(current)) || _checkups.Count == 0)
-                    target = current;
+                if ((truck.m_targetBuilding != 0 && WithinPrimaryRange(truck.m_targetBuilding)) || _checkups.Count == 0)
+                    target = truck.m_targetBuilding;
                 else
                 {
                     target = _checkups[0];

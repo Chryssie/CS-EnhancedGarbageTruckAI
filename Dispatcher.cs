@@ -35,7 +35,7 @@ namespace EnhancedGarbageTruckAI
 
             foreach (var plugin in PluginManager.instance.GetPluginsInfo())
             {
-                if (plugin.publishedFileID.AsUInt64 == 421028969)
+                if (plugin.publishedFileID.AsUInt64 == 583538182) 
                     return true;
             }
 
@@ -225,7 +225,7 @@ namespace EnhancedGarbageTruckAI
 
             foreach (ushort id in data.VehiclesUpdated)
             {
-                if (!data.IsHearse(id))
+                if (!data.IsGarbageTruck(id))
                     continue;
 
                 Vehicle v = vehicles[id];
