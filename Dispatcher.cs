@@ -24,6 +24,7 @@ namespace EnhancedGarbageTruckAI
 
         private Dictionary<ushort, Landfill> _landfills;
         private Dictionary<ushort, DateTime> _master;
+        private uint _lastProcessedFrame;
 
         protected bool IsOverwatched()
         {
@@ -109,8 +110,13 @@ namespace EnhancedGarbageTruckAI
 
                     ProcessNewPickups();
 
-                    ProcessIdleGarbageTrucks();
-                    UpdateGarbageTrucks();
+                    if (!SimulationManager.instance.SimulationPaused
+                        && ((Singleton<SimulationManager>.instance.m_currentFrameIndex / 16 % 4) == 0 || (_lastProcessedFrame / 16 % 4) == 0))
+                    {
+                        ProcessIdleGarbageTrucks();
+                        UpdateGarbageTrucks();
+                    }
+                    _lastProcessedFrame = Singleton<SimulationManager>.instance.m_currentFrameIndex;
                 }
             }
             catch (Exception e)
