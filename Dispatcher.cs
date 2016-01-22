@@ -232,7 +232,7 @@ namespace EnhancedGarbageTruckAI
 
             foreach (ushort id in data.VehiclesUpdated)
             {
-                if (((Singleton<SimulationManager>.instance.m_currentFrameIndex / 16 % 4) != 0 && (_lastProcessedFrame / 16 % 4) != 0))
+                if (((Singleton<SimulationManager>.instance.m_currentFrameIndex / 16 % 8) != 0 && (_lastProcessedFrame / 16 % 8) != 0))
                 {
                     _updated.Remove(id);
                     continue;
