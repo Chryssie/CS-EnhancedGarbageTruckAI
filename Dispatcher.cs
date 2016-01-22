@@ -24,6 +24,7 @@ namespace EnhancedGarbageTruckAI
 
         private Dictionary<ushort, Landfill> _landfills;
         private Dictionary<ushort, DateTime> _master;
+        private HashSet<ushort> _updated;
         private uint _lastProcessedFrame;
 
         protected bool IsOverwatched()
@@ -94,6 +95,7 @@ namespace EnhancedGarbageTruckAI
 
                     _landfills = new Dictionary<ushort, Landfill>();
                     _master = new Dictionary<ushort, DateTime>();
+                    _updated = new HashSet<ushort>();
 
                     _initialized = true;
 
@@ -110,8 +112,7 @@ namespace EnhancedGarbageTruckAI
 
                     ProcessNewPickups();
 
-                    if (!SimulationManager.instance.SimulationPaused
-                        && ((Singleton<SimulationManager>.instance.m_currentFrameIndex / 16 % 4) == 0 || (_lastProcessedFrame / 16 % 4) == 0))
+                    if (!SimulationManager.instance.SimulationPaused)
                     {
                         ProcessIdleGarbageTrucks();
                         UpdateGarbageTrucks();
@@ -231,6 +232,20 @@ namespace EnhancedGarbageTruckAI
 
             foreach (ushort id in data.VehiclesUpdated)
             {
+                if (((Singleton<SimulationManager>.instance.m_currentFrameIndex / 16 % 4) != 0 && (_lastProcessedFrame / 16 % 4) != 0))
+                {
+                    _updated.Remove(id);
+                    continue;
+                }
+                else if (_updated.Contains(id))
+                {
+                    continue;
+                }
+                else
+                {
+                    _updated.Add(id);
+                }
+
                 if (!data.IsGarbageTruck(id))
                     continue;
 
