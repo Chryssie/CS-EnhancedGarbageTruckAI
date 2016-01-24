@@ -25,8 +25,9 @@ namespace EnhancedGarbageTruckAI
         private HashSet<ushort> _primary;
         private HashSet<ushort> _secondary;
         private List<ushort> _checkups;
+        private Dictionary<ushort, HashSet<ushort>> _oldtargets;
 
-        public Landfill(ushort id, ref Dictionary<ushort, DateTime> master)
+        public Landfill(ushort id, ref Dictionary<ushort, DateTime> master, ref Dictionary<ushort, HashSet<ushort>> oldtargets)
         {
             _settings = Settings.Instance;
             _helper = Helper.Instance;
@@ -40,6 +41,7 @@ namespace EnhancedGarbageTruckAI
             _primary = new HashSet<ushort>();
             _secondary = new HashSet<ushort>();
             _checkups = new List<ushort>();
+            _oldtargets = oldtargets;
         }
 
         public void AddPickup(ushort id)
@@ -178,8 +180,9 @@ namespace EnhancedGarbageTruckAI
             return target;
         }
 
-        public ushort AssignTarget(Vehicle truck)
+        public ushort AssignTarget(ushort truckID)
         {
+            Vehicle truck = Singleton<VehicleManager>.instance.m_vehicles.m_buffer[truckID];
             Building[] buildings = Singleton<BuildingManager>.instance.m_buildings.m_buffer;
 
             ushort target = 0;
@@ -188,13 +191,15 @@ namespace EnhancedGarbageTruckAI
             if (truck.m_sourceBuilding != _id)
                 return target;
 
-            target = GetClosestTarget(truck, ref _primary);
+            target = GetClosestTarget(truckID, ref _primary);
 
             if (target == 0)
-                target = GetClosestTarget(truck, ref _secondary);
+                target = GetClosestTarget(truckID, ref _secondary);
 
             if (target == 0)
             {
+                _oldtargets.Remove(truckID);
+
                 if ((truck.m_targetBuilding != 0 && WithinPrimaryRange(truck.m_targetBuilding)) || _checkups.Count == 0)
                     target = truck.m_targetBuilding;
                 else
@@ -218,8 +223,10 @@ namespace EnhancedGarbageTruckAI
             return target;
         }
 
-        private ushort GetClosestTarget(Vehicle truck, ref HashSet<ushort> targets)
+        private ushort GetClosestTarget(ushort truckID, ref HashSet<ushort> targets)
         {
+            Vehicle truck = Singleton<VehicleManager>.instance.m_vehicles.m_buffer[truckID];
+
             Building[] buildings = Singleton<BuildingManager>.instance.m_buildings.m_buffer;
 
             List<ushort> removals = new List<ushort>();
@@ -257,6 +264,9 @@ namespace EnhancedGarbageTruckAI
             foreach (ushort id in targets)
             {
                 if (target == id)
+                    continue;
+
+                if (_oldtargets.ContainsKey(truckID) && _oldtargets[truckID].Contains(id))
                     continue;
 
                 if (!SkylinesOverwatch.Data.Instance.IsBuildingWithGarbage(id))
