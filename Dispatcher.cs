@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading;
-
-using ICities;
-using ColossalFramework;
-using ColossalFramework.Math;
+﻿using ColossalFramework;
 using ColossalFramework.Plugins;
-using ColossalFramework.UI;
-using UnityEngine;
+using ICities;
+using System;
+using System.Collections.Generic;
 
 namespace EnhancedGarbageTruckAI
 {
@@ -15,9 +10,6 @@ namespace EnhancedGarbageTruckAI
     {
         private Settings _settings;
         private Helper _helper;
-
-        private string _collecting = ColossalFramework.Globalization.Locale.Get("VEHICLE_STATUS_GARBAGE_COLLECT");
-        private string _returning = ColossalFramework.Globalization.Locale.Get("VEHICLE_STATUS_GARBAGE_RETURN");
 
         private bool _initialized;
         private bool _baselined;
@@ -233,13 +225,13 @@ namespace EnhancedGarbageTruckAI
         {
             SkylinesOverwatch.Data data = SkylinesOverwatch.Data.Instance;
             Vehicle[] vehicles = Singleton<VehicleManager>.instance.m_vehicles.m_buffer;
-            InstanceID instanceID = new InstanceID();
+            Building[] buildings = Singleton<BuildingManager>.instance.m_buildings.m_buffer;
             uint num1 = Singleton<SimulationManager>.instance.m_currentFrameIndex >> 4 & 7u;
             uint num2 = _lastProcessedFrame >> 4 & 7u;
 
             foreach (ushort vehicleID in data.VehiclesRemoved)
             {
-                if (_lasttargets.ContainsKey(vehicleID) && CheckGarbage(_lasttargets[vehicleID]))
+                if (_lasttargets.ContainsKey(vehicleID) && buildings[_lasttargets[vehicleID]].Info.m_buildingAI.GetGarbageAmount(_lasttargets[vehicleID], ref Singleton<BuildingManager>.instance.m_buildings.m_buffer[_lasttargets[vehicleID]]) > 2500)
                 {
                     foreach (ushort id in _landfills.Keys)
                         _landfills[id].AddPickup(_lasttargets[vehicleID]);
@@ -273,11 +265,11 @@ namespace EnhancedGarbageTruckAI
                 if (!_landfills.ContainsKey(v.m_sourceBuilding))
                     continue;
 
-                string localizedStatus = v.Info.m_vehicleAI.GetLocalizedStatus(vehicleID, ref v, out instanceID);
+                int truckStatus = GetGarbageTruckStatus(ref v);
 
-                if (localizedStatus == _returning && _lasttargets.ContainsKey(vehicleID))
+                if (truckStatus == VEHICLE_STATUS_GARBAGE_RETURN && _lasttargets.ContainsKey(vehicleID))
                 {
-                    if (CheckGarbage(_lasttargets[vehicleID]))
+                    if (buildings[_lasttargets[vehicleID]].Info.m_buildingAI.GetGarbageAmount(_lasttargets[vehicleID], ref Singleton<BuildingManager>.instance.m_buildings.m_buffer[_lasttargets[vehicleID]]) > 2500)
                     {
                         foreach (ushort id in _landfills.Keys)
                             _landfills[id].AddPickup(_lasttargets[vehicleID]);
@@ -285,7 +277,7 @@ namespace EnhancedGarbageTruckAI
                     _lasttargets.Remove(vehicleID);
                     continue;
                 }
-                if (localizedStatus != _collecting)
+                if (truckStatus != VEHICLE_STATUS_GARBAGE_COLLECT)
                     continue;
 
                 if (_lasttargets.ContainsKey(vehicleID) && _lasttargets[vehicleID] != v.m_targetBuilding)
@@ -297,7 +289,7 @@ namespace EnhancedGarbageTruckAI
 
                 if (target != 0 && target != v.m_targetBuilding)
                 {
-                    if (CheckGarbage(v.m_targetBuilding))
+                    if (buildings[v.m_targetBuilding].Info.m_buildingAI.GetGarbageAmount(v.m_targetBuilding, ref Singleton<BuildingManager>.instance.m_buildings.m_buffer[v.m_targetBuilding]) > 2500)
                     {
                         foreach (ushort id in _landfills.Keys)
                             _landfills[id].AddPickup(v.m_targetBuilding);
@@ -311,11 +303,45 @@ namespace EnhancedGarbageTruckAI
             }
         }
 
-        private bool CheckGarbage(ushort buildingID)
+        const int VEHICLE_STATUS_GARBAGE_RETURN = 0;
+        const int VEHICLE_STATUS_GARBAGE_UNLOAD = 1;
+        const int VEHICLE_STATUS_GARBAGE_TRANSFER = 2;
+        const int VEHICLE_STATUS_CONFUSED = 3;
+        const int VEHICLE_STATUS_GARBAGE_WAIT = 4;
+        const int VEHICLE_STATUS_GARBAGE_COLLECT = 5;
+
+        private int GetGarbageTruckStatus(ref Vehicle data)
         {
-            Building [] buildings = Singleton<BuildingManager>.instance.m_buildings.m_buffer;
-            return buildings[buildingID].Info.m_buildingAI.GetGarbageAmount(buildingID, ref Singleton<BuildingManager>.instance.m_buildings.m_buffer[buildingID]) > 2500;
+            if ((data.m_flags & Vehicle.Flags.TransferToSource) == Vehicle.Flags.None)
+            {
+                if ((data.m_flags & Vehicle.Flags.TransferToTarget) != Vehicle.Flags.None)
+                {
+                    if ((data.m_flags & Vehicle.Flags.GoingBack) != Vehicle.Flags.None)
+                    {
+                        return VEHICLE_STATUS_GARBAGE_RETURN;
+                    }
+                    if ((data.m_flags & Vehicle.Flags.WaitingTarget) != Vehicle.Flags.None)
+                    {
+                        return VEHICLE_STATUS_GARBAGE_UNLOAD;
+                    }
+                    if (data.m_targetBuilding != 0)
+                    {
+                        return VEHICLE_STATUS_GARBAGE_TRANSFER;
+                    }
+                }
+                return VEHICLE_STATUS_CONFUSED;
+            }
+            if ((data.m_flags & Vehicle.Flags.GoingBack) != Vehicle.Flags.None)
+            {
+                return VEHICLE_STATUS_GARBAGE_RETURN;
+            }
+            if ((data.m_flags & Vehicle.Flags.WaitingTarget) != Vehicle.Flags.None)
+            {
+                return VEHICLE_STATUS_GARBAGE_WAIT;
+            }
+            return VEHICLE_STATUS_GARBAGE_COLLECT;
         }
+
     }
 }
 

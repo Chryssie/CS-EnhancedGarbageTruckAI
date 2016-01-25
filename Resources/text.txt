@@ -1,0 +1,2 @@
+﻿Settings Settings
+PrioritizeTargetWithRedSigns Garbage trucks prioritize the buildings with the red signs for pickup

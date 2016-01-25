@@ -1,13 +1,7 @@
-﻿using System;
+﻿using ColossalFramework;
+using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using System.Threading;
-
-using ICities;
-using ColossalFramework;
-using ColossalFramework.Math;
-using ColossalFramework.Plugins;
-using ColossalFramework.UI;
 using UnityEngine;
 
 namespace EnhancedGarbageTruckAI
@@ -232,7 +226,7 @@ namespace EnhancedGarbageTruckAI
             List<ushort> removals = new List<ushort>();
 
             ushort target = truck.m_targetBuilding;
-            bool targetProblematic = false;
+            int targetProblematicLevel = 0;
             float distance = float.PositiveInfinity;
 
             Vector3 velocity = truck.GetLastFrameVelocity();
@@ -243,14 +237,24 @@ namespace EnhancedGarbageTruckAI
 
             if (targets.Contains(target))
             {
-                if (!SkylinesOverwatch.Data.Instance.IsBuildingWithGarbage(target))
+                if (buildings[target].Info.m_buildingAI.GetGarbageAmount(target, ref Singleton<BuildingManager>.instance.m_buildings.m_buffer[target]) <= 2500)
                 {
                     removals.Add(target);
                     target = 0;
                 }
                 else
                 {
-                    targetProblematic = (buildings[target].m_problems & Notification.Problem.Garbage) != Notification.Problem.None;
+                    if ((buildings[target].m_problems & Notification.Problem.Garbage) != Notification.Problem.None)
+                    {
+                        if (Identity.ModConf.PrioritizeTargetWithRedSigns && (buildings[target].m_problems & Notification.Problem.MajorProblem) != Notification.Problem.None)
+                        {
+                            targetProblematicLevel = 2;
+                        }
+                        else
+                        {
+                            targetProblematicLevel = 1;
+                        }
+                    }
 
                     Vector3 a = buildings[target].m_position;
 
@@ -278,7 +282,18 @@ namespace EnhancedGarbageTruckAI
                 Vector3 p = buildings[id].m_position;
                 float d = (p - position).sqrMagnitude;
 
-                bool candidateProblematic = (buildings[id].m_problems & Notification.Problem.Garbage) != Notification.Problem.None;
+                int candidateProblematicLevel = 0;
+                if ((buildings[id].m_problems & Notification.Problem.Garbage) != Notification.Problem.None)
+                {
+                    if (Identity.ModConf.PrioritizeTargetWithRedSigns && (buildings[id].m_problems & Notification.Problem.MajorProblem) != Notification.Problem.None)
+                    {
+                        candidateProblematicLevel = 2;
+                    }
+                    else
+                    {
+                        candidateProblematicLevel = 1;
+                    }
+                }
 
                 if ((SimulationManager.instance.m_currentGameTime - _master[id]).TotalDays <= _settings.DispatchGap)
                 {
@@ -295,10 +310,10 @@ namespace EnhancedGarbageTruckAI
                 }
                 else
                 {
-                    if (targetProblematic && !candidateProblematic)
+                    if (targetProblematicLevel > candidateProblematicLevel)
                         continue;
 
-                    if (!targetProblematic && candidateProblematic)
+                    if (targetProblematicLevel < candidateProblematicLevel)
                     {
                         // No additonal conditions at the moment. Problematic buildings always have priority over nonproblematic buildings
                     }
@@ -318,7 +333,7 @@ namespace EnhancedGarbageTruckAI
                 }
 
                 target = id;
-                targetProblematic = candidateProblematic;
+                targetProblematicLevel = candidateProblematicLevel;
                 distance = d;
             }
 
