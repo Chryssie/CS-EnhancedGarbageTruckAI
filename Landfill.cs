@@ -1,7 +1,6 @@
 ﻿using ColossalFramework;
 using System;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 using UnityEngine;
 
 namespace EnhancedGarbageTruckAI
@@ -11,9 +10,7 @@ namespace EnhancedGarbageTruckAI
         private Settings _settings;
         private Helper _helper;
 
-        private string _truckCount;
-
-        private readonly ushort _id;
+        private readonly ushort _buildingID;
 
         private Dictionary<ushort, DateTime> _master;
         private HashSet<ushort> _primary;
@@ -26,10 +23,7 @@ namespace EnhancedGarbageTruckAI
             _settings = Settings.Instance;
             _helper = Helper.Instance;
 
-            _truckCount = ColossalFramework.Globalization.Locale.Get("AIINFO_GARBAGE_TRUCKS");
-            _truckCount = _truckCount.Substring(0, _truckCount.IndexOf(":") + 1);
-
-            _id = id;
+            _buildingID = id;
 
             _master = master;
             _primary = new HashSet<ushort>();
@@ -67,7 +61,7 @@ namespace EnhancedGarbageTruckAI
         {
             Building[] buildings = Singleton<BuildingManager>.instance.m_buildings.m_buffer;
 
-            Building landfill = buildings[(int)_id];
+            Building landfill = buildings[(int)_buildingID];
             Building target = buildings[(int)id];
 
             DistrictManager dm = Singleton<DistrictManager>.instance;
@@ -86,10 +80,10 @@ namespace EnhancedGarbageTruckAI
         {
             Building[] buildings = Singleton<BuildingManager>.instance.m_buildings.m_buffer;
 
-            Building landfill = buildings[(int)_id];
+            Building landfill = buildings[(int)_buildingID];
             Building target = buildings[(int)id];
 
-            float range = landfill.Info.m_buildingAI.GetCurrentRange(_id, ref landfill);
+            float range = landfill.Info.m_buildingAI.GetCurrentRange(_buildingID, ref landfill);
             range = range * range;
 
             float distance = (landfill.m_position - target.m_position).sqrMagnitude;
@@ -102,33 +96,27 @@ namespace EnhancedGarbageTruckAI
             if (SimulationManager.instance.SimulationPaused) return;
 
             Building[] buildings = Singleton<BuildingManager>.instance.m_buildings.m_buffer;
-            Building me = buildings[_id];
+            Building me = buildings[_buildingID];
 
             if ((me.m_flags & Building.Flags.Active) == Building.Flags.None && me.m_productionRate == 0) return;
 
             if ((me.m_flags & Building.Flags.Downgrading) != Building.Flags.None) return;
 
-            if (me.Info.m_buildingAI.IsFull(_id, ref buildings[_id])) return;
+            if (me.Info.m_buildingAI.IsFull(_buildingID, ref buildings[_buildingID])) return;
 
-            string stats = me.Info.m_buildingAI.GetLocalizedStats(_id, ref buildings[_id]);
-            stats = stats.Substring(stats.IndexOf(_truckCount));
+            int max = (PlayerBuildingAI.GetProductionRate(100, Singleton<EconomyManager>.instance.GetBudget(me.Info.m_class)) * ((LandfillSiteAI)me.Info.m_buildingAI).m_garbageTruckCount + 99) / 100;
 
-            int now;
-            int max;
-
-            Match match = Regex.Match(stats, @"[0-9]+");
-
-            if (match.Success)
-                now = int.Parse(match.Value);
-            else
-                return;
-
-            match = match.NextMatch();
-
-            if (match.Success)
-                max = int.Parse(match.Value);
-            else
-                return;
+            int now = 0;
+            VehicleManager instance = Singleton<VehicleManager>.instance;
+            ushort num = buildings[_buildingID].m_ownVehicles;
+            while (num != 0)
+            {
+                if ((TransferManager.TransferReason)instance.m_vehicles.m_buffer[(int)num].m_transferType == TransferManager.TransferReason.Garbage)
+                {
+                    now++;
+                }
+                num = instance.m_vehicles.m_buffer[(int)num].m_nextOwnVehicle;
+            }
 
             if (now >= max)
                 return;
@@ -148,8 +136,8 @@ namespace EnhancedGarbageTruckAI
             offer.Position = buildings[target].m_position;
 
             me.Info.m_buildingAI.StartTransfer(
-                _id,
-                ref buildings[_id],
+                _buildingID,
+                ref buildings[_buildingID],
                 TransferManager.TransferReason.Garbage,
                 offer
             );
@@ -182,7 +170,7 @@ namespace EnhancedGarbageTruckAI
             ushort target = 0;
             ushort current = truck.m_targetBuilding;
 
-            if (truck.m_sourceBuilding != _id)
+            if (truck.m_sourceBuilding != _buildingID)
                 return target;
 
             target = GetClosestTarget(truckID, ref _primary);
@@ -295,7 +283,7 @@ namespace EnhancedGarbageTruckAI
                     }
                 }
 
-                if ((SimulationManager.instance.m_currentGameTime - _master[id]).TotalDays <= _settings.DispatchGap)
+                if (_master.ContainsKey(id) && (SimulationManager.instance.m_currentGameTime - _master[id]).TotalDays <= _settings.DispatchGap)
                 {
                     if (d > 2500)
                         continue;
