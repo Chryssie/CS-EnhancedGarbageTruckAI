@@ -303,9 +303,9 @@ namespace EnhancedGarbageTruckAI
                     if (d > distance)
                         continue;
 
-                    double angle = Math.Abs(facing - Math.Atan2(p.z - position.z, p.x - position.x));
+                    double angle = Helper.GetAngleDifference(facing, Math.Atan2(p.z - position.z, p.x - position.x));
 
-                    if (angle > 1.5707963267948966)
+                    if (angle < -1.5707963267948966 || 1.5707963267948966 < angle)
                         continue;
                 }
                 else
@@ -324,9 +324,9 @@ namespace EnhancedGarbageTruckAI
 
                         if (!double.IsPositiveInfinity(bearing))
                         {
-                            double angle = Math.Abs(bearing - Math.Atan2(p.z - position.z, p.x - position.x));
+                            double angle = Helper.GetAngleDifference(bearing, Math.Atan2(p.z - position.z, p.x - position.x));
 
-                            if (angle > 1.5707963267948966)
+                            if (angle < -1.5707963267948966 || 1.5707963267948966 < angle)
                                 continue;
                         }
                     }
