@@ -15,12 +15,14 @@ namespace EnhancedGarbageTruckAI
         private bool _baselined;
         private bool _terminated;
 
-        private Dictionary<ushort, Landfill> _landfills;
-        private Dictionary<ushort, DateTime> _master;
+        public static Dictionary<ushort, Landfill> _landfills;
+        public static Dictionary<ushort, Claimant> _master;
         private HashSet<ushort> _updated;
         private uint _lastProcessedFrame;
-        private Dictionary<ushort, HashSet<ushort>> _oldtargets;
-        private Dictionary<ushort, ushort> _lasttargets;
+        public static Dictionary<ushort, HashSet<ushort>> _oldtargets;
+        public static Dictionary<ushort, ushort> _lasttargets;
+        public static Dictionary<ushort, ushort> _PathfindCount;
+        private CustomGarbageTruckAI _CustomGarbageTruckAI;
 
         protected bool IsOverwatched()
         {
@@ -45,7 +47,7 @@ namespace EnhancedGarbageTruckAI
         {
             _settings = Settings.Instance;
             _helper = Helper.Instance;
-
+            _CustomGarbageTruckAI = new CustomGarbageTruckAI();
             _initialized = false;
             _baselined = false;
             _terminated = false;
@@ -89,10 +91,11 @@ namespace EnhancedGarbageTruckAI
                     SkylinesOverwatch.Settings.Instance.Enable.VehicleMonitor = true;
 
                     _landfills = new Dictionary<ushort, Landfill>();
-                    _master = new Dictionary<ushort, DateTime>();
+                    _master = new Dictionary<ushort, Claimant>();
                     _updated = new HashSet<ushort>();
                     _oldtargets = new Dictionary<ushort, HashSet<ushort>>();
                     _lasttargets = new Dictionary<ushort, ushort>();
+                    _PathfindCount = new Dictionary<ushort, ushort>();
 
                     _initialized = true;
 
@@ -192,6 +195,9 @@ namespace EnhancedGarbageTruckAI
 
             foreach (ushort pickup in data.BuildingsUpdated)
             {
+                if (data.IsLandfillSite(pickup))
+                    continue;
+
                 if (data.IsBuildingWithGarbage(pickup))
                 {
                     foreach (ushort id in _landfills.Keys)
@@ -231,32 +237,23 @@ namespace EnhancedGarbageTruckAI
 
             foreach (ushort vehicleID in data.VehiclesRemoved)
             {
-                if (_lasttargets.ContainsKey(vehicleID) && buildings[_lasttargets[vehicleID]].Info.m_buildingAI.GetGarbageAmount(_lasttargets[vehicleID], ref Singleton<BuildingManager>.instance.m_buildings.m_buffer[_lasttargets[vehicleID]]) > 2500)
+                if (_lasttargets.ContainsKey(vehicleID)
+                    && Helper.IsBuildingWithGarbage(_lasttargets[vehicleID]))
                 {
                     foreach (ushort id in _landfills.Keys)
                         _landfills[id].AddPickup(_lasttargets[vehicleID]);
                 }
                 _oldtargets.Remove(vehicleID);
+                if (_lasttargets.ContainsKey(vehicleID))
+                {
+                    _master.Remove(_lasttargets[vehicleID]);
+                }
                 _lasttargets.Remove(vehicleID);
+                _PathfindCount.Remove(vehicleID);
             }
 
             foreach (ushort vehicleID in data.VehiclesUpdated)
             {
-                uint num3 = vehicleID & 7u;
-                if (num1 != num3 && num2 != num3)
-                {
-                    _updated.Remove(vehicleID);
-                    continue;
-                }
-                else if (_updated.Contains(vehicleID))
-                {
-                    continue;
-                }
-                else
-                {
-                    _updated.Add(vehicleID);
-                }
-
                 if (!data.IsGarbageTruck(vehicleID))
                     continue;
 
@@ -265,11 +262,42 @@ namespace EnhancedGarbageTruckAI
                 if (!_landfills.ContainsKey(v.m_sourceBuilding))
                     continue;
 
+                if (_master.ContainsKey(v.m_targetBuilding))
+                {
+                    if (_master[v.m_targetBuilding].Truck != vehicleID)
+                        _master[v.m_targetBuilding] = new Claimant(vehicleID, v.m_targetBuilding);
+                }
+                else
+                    _master.Add(v.m_targetBuilding, new Claimant(vehicleID, v.m_targetBuilding));
+                
+
+                if ((v.m_flags & (Vehicle.Flags.Stopped | Vehicle.Flags.WaitingSpace | Vehicle.Flags.WaitingPath | Vehicle.Flags.WaitingLoading | Vehicle.Flags.WaitingCargo)) != Vehicle.Flags.None) continue;
+                if ((v.m_flags & (Vehicle.Flags.Spawned)) == Vehicle.Flags.None) continue;
+                if (v.m_path == 0u) continue;
+                
+                _PathfindCount.Remove(vehicleID);
+
+                if ((v.m_flags & (Vehicle.Flags.WaitingTarget)) == Vehicle.Flags.None)
+                {
+                    uint num3 = vehicleID & 7u;
+                    if (num1 != num3 && num2 != num3)
+                    {
+                        _updated.Remove(vehicleID);
+                        continue;
+                    }
+                    else if (_updated.Contains(vehicleID))
+                    {
+                        continue;
+                    }
+                }
+
+                _updated.Add(vehicleID);
+
                 int truckStatus = GetGarbageTruckStatus(ref v);
 
                 if (truckStatus == VEHICLE_STATUS_GARBAGE_RETURN && _lasttargets.ContainsKey(vehicleID))
                 {
-                    if (buildings[_lasttargets[vehicleID]].Info.m_buildingAI.GetGarbageAmount(_lasttargets[vehicleID], ref Singleton<BuildingManager>.instance.m_buildings.m_buffer[_lasttargets[vehicleID]]) > 2500)
+                    if (Helper.IsBuildingWithGarbage(_lasttargets[vehicleID]))
                     {
                         foreach (ushort id in _landfills.Keys)
                             _landfills[id].AddPickup(_lasttargets[vehicleID]);
@@ -277,28 +305,25 @@ namespace EnhancedGarbageTruckAI
                     _lasttargets.Remove(vehicleID);
                     continue;
                 }
-                if (truckStatus != VEHICLE_STATUS_GARBAGE_COLLECT)
+                if (truckStatus != VEHICLE_STATUS_GARBAGE_COLLECT && truckStatus != VEHICLE_STATUS_GARBAGE_WAIT)
                     continue;
-
-                if (_lasttargets.ContainsKey(vehicleID) && _lasttargets[vehicleID] != v.m_targetBuilding)
-                {
-                    _oldtargets.Remove(vehicleID);
-                }
+                
                 ushort target = _landfills[v.m_sourceBuilding].AssignTarget(vehicleID);
-                _lasttargets[vehicleID] = target;
+
+                if (truckStatus == VEHICLE_STATUS_GARBAGE_COLLECT && (target == 0 || target == v.m_targetBuilding))
+                    continue;
 
                 if (target != 0 && target != v.m_targetBuilding)
                 {
-                    if (buildings[v.m_targetBuilding].Info.m_buildingAI.GetGarbageAmount(v.m_targetBuilding, ref Singleton<BuildingManager>.instance.m_buildings.m_buffer[v.m_targetBuilding]) > 2500)
+                    if (Helper.IsBuildingWithGarbage(v.m_targetBuilding))
                     {
                         foreach (ushort id in _landfills.Keys)
                             _landfills[id].AddPickup(v.m_targetBuilding);
-
-                        if (!_oldtargets.ContainsKey(vehicleID))
-                            _oldtargets.Add(vehicleID, new HashSet<ushort>());
-                        _oldtargets[vehicleID].Add(v.m_targetBuilding);
                     }
-                    v.Info.m_vehicleAI.SetTarget(vehicleID, ref vehicles[vehicleID], target);
+
+                    _master.Remove(v.m_targetBuilding);
+                    _lasttargets[vehicleID] = v.m_targetBuilding;
+                    _CustomGarbageTruckAI.SetTarget(vehicleID, ref Singleton<VehicleManager>.instance.m_vehicles.m_buffer[vehicleID], target);
                 }
             }
         }
@@ -307,10 +332,10 @@ namespace EnhancedGarbageTruckAI
         const int VEHICLE_STATUS_GARBAGE_UNLOAD = 1;
         const int VEHICLE_STATUS_GARBAGE_TRANSFER = 2;
         const int VEHICLE_STATUS_CONFUSED = 3;
-        const int VEHICLE_STATUS_GARBAGE_WAIT = 4;
-        const int VEHICLE_STATUS_GARBAGE_COLLECT = 5;
+        public const int VEHICLE_STATUS_GARBAGE_WAIT = 4;
+        public const int VEHICLE_STATUS_GARBAGE_COLLECT = 5;
 
-        private int GetGarbageTruckStatus(ref Vehicle data)
+        public static int GetGarbageTruckStatus(ref Vehicle data)
         {
             if ((data.m_flags & Vehicle.Flags.TransferToSource) == Vehicle.Flags.None)
             {
@@ -341,7 +366,6 @@ namespace EnhancedGarbageTruckAI
             }
             return VEHICLE_STATUS_GARBAGE_COLLECT;
         }
-
     }
 }
 

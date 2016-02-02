@@ -25,17 +25,22 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <ConsolePause>false</ConsolePause>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup>
     <RunPostBuildEvent>Always</RunPostBuildEvent>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Claimant.cs" />
     <Compile Include="ModConfiguration.cs" />
+    <Compile Include="CustomGarbageTruckAI.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Dispatcher.cs" />
     <Compile Include="Helper.cs" />
     <Compile Include="Identity.cs" />
     <Compile Include="Loader.cs" />
+    <Compile Include="RedirectionHelper.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="Landfill.cs" />
     <Compile Include="Translation.cs" />

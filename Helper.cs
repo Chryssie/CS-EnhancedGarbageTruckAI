@@ -1,4 +1,5 @@
-﻿using ColossalFramework.Plugins;
+﻿using ColossalFramework;
+using ColossalFramework.Plugins;
 using System;
 using UnityEngine;
 
@@ -40,6 +41,12 @@ namespace EnhancedGarbageTruckAI
                 diff += Math.PI * 2;
 
             return diff;
+        }
+
+        public static bool IsBuildingWithGarbage(ushort id)
+        {
+            return ((Singleton<BuildingManager>.instance.m_buildings.m_buffer[id].m_flags & (Building.Flags.Abandoned | Building.Flags.BurnedDown)) == Building.Flags.None
+                && Singleton<BuildingManager>.instance.m_buildings.m_buffer[id].Info.m_buildingAI.GetGarbageAmount(id, ref Singleton<BuildingManager>.instance.m_buildings.m_buffer[id]) > 2500);
         }
     }
 }
