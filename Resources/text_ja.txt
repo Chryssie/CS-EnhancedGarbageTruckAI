@@ -1,2 +1,2 @@
 ﻿Settings 設定
-PrioritizeTargetWithRedSigns 赤い警告サイン付きの建物からのピックアップを優先する
+PrioritizeTargetsWithRedSigns 赤い警告サイン付きの建物からのピックアップを優先する

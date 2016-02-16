@@ -310,9 +310,6 @@ namespace EnhancedGarbageTruckAI
                 
                 ushort target = _landfills[v.m_sourceBuilding].AssignTarget(vehicleID);
 
-                if (truckStatus == VEHICLE_STATUS_GARBAGE_COLLECT && (target == 0 || target == v.m_targetBuilding))
-                    continue;
-
                 if (target != 0 && target != v.m_targetBuilding)
                 {
                     if (Helper.IsBuildingWithGarbage(v.m_targetBuilding))

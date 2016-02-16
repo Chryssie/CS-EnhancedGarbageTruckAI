@@ -143,14 +143,14 @@ namespace EnhancedGarbageTruckAI
             );
         }
 
-        public ushort GetUnclaimedTarget()
+        public ushort GetUnclaimedTarget(bool use_checkups = false)
         {
             ushort target = 0;
 
             target = GetUnclaimedTarget(_primary);
             if (target == 0)
                 target = GetUnclaimedTarget(_secondary);
-            if (target == 0 && _checkups.Count > 0)
+            if (use_checkups && target == 0 && _checkups.Count > 0)
             {
                 target = _checkups[0];
                 _checkups.RemoveAt(0);
@@ -409,8 +409,6 @@ namespace EnhancedGarbageTruckAI
             }
             else if (!immediateOnly)
                 target = 0;
-
-            targets.Remove(target);
 
             foreach (ushort id in targets)
             {

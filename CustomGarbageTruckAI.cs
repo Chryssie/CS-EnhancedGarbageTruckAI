@@ -16,12 +16,13 @@ namespace EnhancedGarbageTruckAI
                 Dispatcher._lasttargets.Remove(vehicleID);
             }
             else if ((truckStatus == Dispatcher.VEHICLE_STATUS_GARBAGE_WAIT || truckStatus == Dispatcher.VEHICLE_STATUS_GARBAGE_COLLECT)
+                && ((data.m_flags & (Vehicle.Flags.Spawned)) != Vehicle.Flags.None)
                 && Dispatcher._landfills.ContainsKey(data.m_sourceBuilding)
                 && (!Dispatcher._PathfindCount.ContainsKey(vehicleID) || Dispatcher._PathfindCount[vehicleID] < 5))
             {
                 if (!Dispatcher._PathfindCount.ContainsKey(vehicleID)) Dispatcher._PathfindCount[vehicleID] = 0;
                 Dispatcher._PathfindCount[vehicleID]++;
-                ushort target = Dispatcher._landfills[data.m_sourceBuilding].GetUnclaimedTarget();
+                ushort target = Dispatcher._landfills[data.m_sourceBuilding].GetUnclaimedTarget(true);
                 if (target == 0)
                 {
                     data.Unspawn(vehicleID);
@@ -75,7 +76,7 @@ namespace EnhancedGarbageTruckAI
                     if (retry > 0)
                     {
                         if (!Dispatcher._landfills.ContainsKey(data.m_sourceBuilding)) break;
-                        target = Dispatcher._landfills[data.m_sourceBuilding].GetUnclaimedTarget();
+                        target = Dispatcher._landfills[data.m_sourceBuilding].GetUnclaimedTarget(true);
                         if (target == 0) break;
                     }
 
