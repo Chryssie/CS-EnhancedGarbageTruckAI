@@ -31,6 +31,11 @@ namespace EnhancedGarbageTruckAI
                 Identity.ModConf.PrioritizeTargetWithRedSigns = isChecked;
                 ModConfiguration.Serialize(Identity.configPath, Identity.ModConf);
             });
+            group.AddCheckbox(Translation.GetString("MinimizeGarbageTrucks"), ModConf.MinimizeGarbageTrucks, delegate (bool isChecked)
+            {
+                Identity.ModConf.MinimizeGarbageTrucks = isChecked;
+                ModConfiguration.Serialize(Identity.configPath, Identity.ModConf);
+            });
         }
 
         private void InitConfigFile()

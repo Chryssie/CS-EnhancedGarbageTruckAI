@@ -48,5 +48,24 @@ namespace EnhancedGarbageTruckAI
             return ((Singleton<BuildingManager>.instance.m_buildings.m_buffer[id].m_flags & (Building.Flags.Abandoned | Building.Flags.BurnedDown)) == Building.Flags.None
                 && Singleton<BuildingManager>.instance.m_buildings.m_buffer[id].Info.m_buildingAI.GetGarbageAmount(id, ref Singleton<BuildingManager>.instance.m_buildings.m_buffer[id]) > 2500);
         }
+
+        public static bool IsOverwatched()
+        {
+#if DEBUG
+
+            return true;
+
+#else
+
+            foreach (var plugin in PluginManager.instance.GetPluginsInfo())
+            {
+                if (plugin.name == "583538182" && plugin.publishedFileID.ToString() == "583538182")
+                    return plugin.isEnabled;
+            }
+
+            return false;
+
+#endif
+        }
     }
 }

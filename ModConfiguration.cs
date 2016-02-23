@@ -6,10 +6,12 @@ namespace EnhancedGarbageTruckAI
     public class ModConfiguration
     {
         public bool PrioritizeTargetWithRedSigns;
+        public bool MinimizeGarbageTrucks;
 
         public ModConfiguration()
 		{
             this.PrioritizeTargetWithRedSigns = false;
+            this.MinimizeGarbageTrucks = false;
         }
 
 		public static bool Serialize(string filename, ModConfiguration config)

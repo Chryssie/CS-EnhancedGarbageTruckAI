@@ -16,22 +16,16 @@ namespace EnhancedGarbageTruckAI
             Right = 4
         }
 
-        private Settings _settings;
-        private Helper _helper;
-
         private readonly ushort _buildingID;
 
         private Dictionary<ushort, Claimant> _master;
-        private HashSet<ushort> _primary;
-        private HashSet<ushort> _secondary;
-        private List<ushort> _checkups;
+        public HashSet<ushort> _primary;
+        public HashSet<ushort> _secondary;
+        public List<ushort> _checkups;
         private Dictionary<ushort, HashSet<ushort>> _oldtargets;
 
         public Landfill(ushort id, ref Dictionary<ushort, Claimant> master, ref Dictionary<ushort, HashSet<ushort>> oldtargets)
         {
-            _settings = Settings.Instance;
-            _helper = Helper.Instance;
-
             _buildingID = id;
 
             _master = master;
@@ -57,9 +51,7 @@ namespace EnhancedGarbageTruckAI
             if (_checkups.Count >= 20)
                 return;
 
-            SkylinesOverwatch.Data data = SkylinesOverwatch.Data.Instance;
-
-            if (WithinPrimaryRange(id) && data.IsPrivateBuilding(id))
+            if (WithinPrimaryRange(id) && SkylinesOverwatch.Data.Instance.IsPrivateBuilding(id))
                 _checkups.Add(id);
         }
 
@@ -99,8 +91,6 @@ namespace EnhancedGarbageTruckAI
 
         public void DispatchIdleVehicle()
         {
-            if (SimulationManager.instance.SimulationPaused) return;
-
             Building[] buildings = Singleton<BuildingManager>.instance.m_buildings.m_buffer;
             Building me = buildings[_buildingID];
 
@@ -143,14 +133,14 @@ namespace EnhancedGarbageTruckAI
             );
         }
 
-        public ushort GetUnclaimedTarget(bool use_checkups = false)
+        public ushort GetUnclaimedTarget(ushort truckID = 0)
         {
             ushort target = 0;
 
-            target = GetUnclaimedTarget(_primary);
+            target = GetUnclaimedTarget(_primary, truckID);
             if (target == 0)
-                target = GetUnclaimedTarget(_secondary);
-            if (use_checkups && target == 0 && _checkups.Count > 0)
+                target = GetUnclaimedTarget(_secondary, truckID);
+            if (truckID != 0 && target == 0 && _checkups.Count > 0)
             {
                 target = _checkups[0];
                 _checkups.RemoveAt(0);
@@ -159,7 +149,7 @@ namespace EnhancedGarbageTruckAI
             return target;
         }
 
-        private ushort GetUnclaimedTarget(ICollection<ushort> targets)
+        private ushort GetUnclaimedTarget(ICollection<ushort> targets, ushort truckID)
         {
             Building[] buildings = Singleton<BuildingManager>.instance.m_buildings.m_buffer;
 
@@ -173,6 +163,9 @@ namespace EnhancedGarbageTruckAI
             foreach (ushort id in targets)
             {
                 if (target == id)
+                    continue;
+
+                if (_oldtargets.ContainsKey(truckID) && _oldtargets[truckID].Contains(id))
                     continue;
 
                 if (!Helper.IsBuildingWithGarbage(id))
@@ -196,7 +189,7 @@ namespace EnhancedGarbageTruckAI
                         candidateProblematicLevel = 1;
                     }
                 }
-                if (_master.ContainsKey(id))
+                if (_master.ContainsKey(id) && _master[id].IsValid)
                 {
                     continue;
                 }
@@ -221,8 +214,6 @@ namespace EnhancedGarbageTruckAI
                 distance = d;
             }
 
-            targets.Remove(target);
-
             foreach (ushort id in removals)
             {
                 _master.Remove(id);
@@ -240,7 +231,6 @@ namespace EnhancedGarbageTruckAI
                 return target;
 
             ushort current = truck.m_targetBuilding;
-            
             if (!Helper.IsBuildingWithGarbage(current))
             {
                 _oldtargets.Remove(truckID);
@@ -252,8 +242,10 @@ namespace EnhancedGarbageTruckAI
             }
             else if (_master.ContainsKey(current))
             {
-                if (_master[current].IsValid && _master[current].Truck != truckID)
+                if (_master[current].Truck != truckID)
+                {
                     current = 0;
+                }
             }
 
             bool immediateOnly = (_primary.Contains(current) || _secondary.Contains(current));
@@ -285,15 +277,15 @@ namespace EnhancedGarbageTruckAI
             return target;
         }
 
-        private SearchDirection GetImmediateSearchDirection(ushort hearseID)
+        private SearchDirection GetImmediateSearchDirection(ushort truckID)
         {
-            Vehicle hearse = Singleton<VehicleManager>.instance.m_vehicles.m_buffer[hearseID];
+            Vehicle truck = Singleton<VehicleManager>.instance.m_vehicles.m_buffer[truckID];
 
             PathManager pm = Singleton<PathManager>.instance;
 
-            PathUnit pu = pm.m_pathUnits.m_buffer[hearse.m_path];
+            PathUnit pu = pm.m_pathUnits.m_buffer[truck.m_path];
 
-            byte pi = hearse.m_pathPositionIndex;
+            byte pi = truck.m_pathPositionIndex;
             if (pi == 255) pi = 0;
 
             PathUnit.Position position = pu.GetPosition(pi >> 1);
@@ -369,6 +361,8 @@ namespace EnhancedGarbageTruckAI
             List<ushort> removals = new List<ushort>();
 
             ushort target = truck.m_targetBuilding;
+            if (_master.ContainsKey(target) && _master[target].Truck != truckID)
+                target = 0;
             int targetProblematicLevel = 0;
             float targetdistance = float.PositiveInfinity;
             float distance = float.PositiveInfinity;
@@ -421,6 +415,9 @@ namespace EnhancedGarbageTruckAI
                     continue;
                 }
 
+                if (_master.ContainsKey(id) && _master[id].IsValid && !_master[id].IsChallengable)
+                    continue;
+                
                 Vector3 p = buildings[id].m_position;
                 float d = (p - position).sqrMagnitude;
 
@@ -436,15 +433,16 @@ namespace EnhancedGarbageTruckAI
                         candidateProblematicLevel = 1;
                     }
                 }
+
                 if (_master.ContainsKey(id) && _master[id].IsValid && _master[id].IsChallengable)
                 {
-                    if (d > targetdistance)
+                    if (d > targetdistance * 0.9)
                         continue;
 
                     if (d > distance)
                         continue;
 
-                    if (d > _master[id].Distance)
+                    if (d > _master[id].Distance * 0.9)
                         continue;
 
                     double angle = Helper.GetAngleDifference(facing, Math.Atan2(p.z - position.z, p.x - position.x));
@@ -452,6 +450,9 @@ namespace EnhancedGarbageTruckAI
                     int immediateLevel = GetImmediateLevel(d, angle, immediateDirection);
 
                     if (immediateLevel == 0)
+                        continue;
+
+                    if (_oldtargets.ContainsKey(truckID) && _oldtargets[truckID].Contains(id) && immediateLevel < 2)
                         continue;
                 }
                 else

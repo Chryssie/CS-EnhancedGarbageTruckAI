@@ -39,15 +39,14 @@ namespace EnhancedGarbageTruckAI
             if (_lastUpdated == SimulationManager.instance.m_currentGameTime) return;
 
             _lastUpdated = SimulationManager.instance.m_currentGameTime;
-
-            Building[] buildings = Singleton<BuildingManager>.instance.m_buildings.m_buffer;
             
-            if (!SkylinesOverwatch.Data.Instance.IsGarbageTruck(_id) || buildings[_target].Info.m_buildingAI.GetGarbageAmount(_target, ref Singleton<BuildingManager>.instance.m_buildings.m_buffer[_target]) <= 2500) 
+            if (!SkylinesOverwatch.Data.Instance.IsGarbageTruck(_id) || !Helper.IsBuildingWithGarbage(_target)) 
             {
                 _distance = float.PositiveInfinity;
                 return;
             }
 
+            Building[] buildings = Singleton<BuildingManager>.instance.m_buildings.m_buffer;
             Vehicle v = Singleton<VehicleManager>.instance.m_vehicles.m_buffer[_id];
 
             _distance = (buildings[_target].m_position - v.GetLastFramePosition()).sqrMagnitude;

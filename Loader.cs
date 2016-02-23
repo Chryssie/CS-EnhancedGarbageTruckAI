@@ -21,8 +21,10 @@ namespace EnhancedGarbageTruckAI
             base.OnLevelLoaded(mode);
             if (mode == LoadMode.NewGame || mode == LoadMode.LoadGame)
             {
-                RedirectionHelper.RedirectCalls(m_redirectionStates, typeof(GarbageTruckAI), typeof(CustomGarbageTruckAI), "PathfindFailure", 2);
-                RedirectionHelper.RedirectCalls(m_redirectionStates, typeof(GarbageTruckAI), typeof(CustomGarbageTruckAI), "SetTarget", 3);
+                if (Helper.IsOverwatched())
+                {
+                    RedirectionHelper.RedirectCalls(m_redirectionStates, typeof(GarbageTruckAI), typeof(CustomGarbageTruckAI), "SetTarget", 3);
+                }
                 _helper.GameLoaded = true;
             }
         }

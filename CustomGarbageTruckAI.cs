@@ -7,37 +7,6 @@ namespace EnhancedGarbageTruckAI
 {
     class CustomGarbageTruckAI
     {
-        public void PathfindFailure(ushort vehicleID, ref Vehicle data)
-        {
-            int truckStatus = Dispatcher.GetGarbageTruckStatus(ref data);
-            if (Dispatcher._lasttargets.ContainsKey(vehicleID))
-            {
-                SetTarget(vehicleID, ref Singleton<VehicleManager>.instance.m_vehicles.m_buffer[vehicleID], Dispatcher._lasttargets[vehicleID]);
-                Dispatcher._lasttargets.Remove(vehicleID);
-            }
-            else if ((truckStatus == Dispatcher.VEHICLE_STATUS_GARBAGE_WAIT || truckStatus == Dispatcher.VEHICLE_STATUS_GARBAGE_COLLECT)
-                && ((data.m_flags & (Vehicle.Flags.Spawned)) != Vehicle.Flags.None)
-                && Dispatcher._landfills.ContainsKey(data.m_sourceBuilding)
-                && (!Dispatcher._PathfindCount.ContainsKey(vehicleID) || Dispatcher._PathfindCount[vehicleID] < 5))
-            {
-                if (!Dispatcher._PathfindCount.ContainsKey(vehicleID)) Dispatcher._PathfindCount[vehicleID] = 0;
-                Dispatcher._PathfindCount[vehicleID]++;
-                ushort target = Dispatcher._landfills[data.m_sourceBuilding].GetUnclaimedTarget(true);
-                if (target == 0)
-                {
-                    data.Unspawn(vehicleID);
-                }
-                else
-                {
-                    SetTarget(vehicleID, ref data, target);
-                }
-            }
-            else
-            {
-                data.Unspawn(vehicleID);
-            }
-        }
-
         public void SetTarget(ushort vehicleID, ref Vehicle data, ushort targetBuilding)
         {
             if (targetBuilding == data.m_targetBuilding)
@@ -56,30 +25,54 @@ namespace EnhancedGarbageTruckAI
             }
             else
             {
+                if(Identity.ModConf.MinimizeGarbageTrucks && (data.m_flags & (Vehicle.Flags.Spawned)) == Vehicle.Flags.None)
+                {
+                    if (Dispatcher._landfills != null && Dispatcher._landfills.ContainsKey(data.m_sourceBuilding))
+                    {
+                        if(Dispatcher._landfills[data.m_sourceBuilding]._primary.Count > 0 || Dispatcher._landfills[data.m_sourceBuilding]._secondary.Count > 0 || Dispatcher._landfills[data.m_sourceBuilding]._checkups.Count > 0)
+                            if ((!Dispatcher._landfills[data.m_sourceBuilding]._primary.Contains(targetBuilding) && !Dispatcher._landfills[data.m_sourceBuilding]._secondary.Contains(targetBuilding)) || !Helper.IsBuildingWithGarbage(targetBuilding))
+                            {
+                                data.Unspawn(vehicleID);
+                                return;
+                            }
+                    }
+                    else
+                    {
+                        data.Unspawn(vehicleID);
+                        return;
+                    }
+                }
                 ushort current = data.m_targetBuilding;
 
                 uint path = data.m_path;
                 byte pathPositionIndex = data.m_pathPositionIndex;
                 byte lastPathOffset = data.m_lastPathOffset;
                 ushort target = targetBuilding;
-
+                
                 int truckStatus = Dispatcher.GetGarbageTruckStatus(ref data);
                 int retry_max = 1;
                 if (truckStatus == Dispatcher.VEHICLE_STATUS_GARBAGE_WAIT)
                 {
-                    Dispatcher._oldtargets.Remove(vehicleID);
-                    retry_max = 5;
+                    if(Dispatcher._oldtargets != null) Dispatcher._oldtargets.Remove(vehicleID);
+                    retry_max = 20;
                 }
-
+                
                 for (int retry = 0; retry < retry_max; retry++)
                 {
                     if (retry > 0)
                     {
-                        if (!Dispatcher._landfills.ContainsKey(data.m_sourceBuilding)) break;
-                        target = Dispatcher._landfills[data.m_sourceBuilding].GetUnclaimedTarget(true);
+                        if (Dispatcher._landfills == null || !Dispatcher._landfills.ContainsKey(data.m_sourceBuilding)) break;
+                        target = Dispatcher._landfills[data.m_sourceBuilding].GetUnclaimedTarget(vehicleID);
                         if (target == 0) break;
-                    }
 
+                        if (Dispatcher._oldtargets != null)
+                        {
+                            if (!Dispatcher._oldtargets.ContainsKey(vehicleID))
+                                Dispatcher._oldtargets.Add(vehicleID, new HashSet<ushort>());
+                            Dispatcher._oldtargets[vehicleID].Add(target);
+                        }
+                    }
+                    
                     RemoveTarget(vehicleID, ref data);
                     data.m_targetBuilding = targetBuilding;
                     data.m_flags &= ~Vehicle.Flags.WaitingTarget;
@@ -166,16 +159,22 @@ namespace EnhancedGarbageTruckAI
 
                     if (StartPathFind(vehicleID, ref Singleton<VehicleManager>.instance.m_vehicles.m_buffer[vehicleID]))
                     {
-                        if (!Dispatcher._oldtargets.ContainsKey(vehicleID))
-                            Dispatcher._oldtargets.Add(vehicleID, new HashSet<ushort>());
-                        Dispatcher._oldtargets[vehicleID].Add(target);
-                        if (Dispatcher._master.ContainsKey(target))
+                        if (Dispatcher._oldtargets != null)
                         {
-                            if (Dispatcher._master[target].Truck != vehicleID)
-                                Dispatcher._master[target] = new Claimant(vehicleID, target);
+                            if (!Dispatcher._oldtargets.ContainsKey(vehicleID))
+                                Dispatcher._oldtargets.Add(vehicleID, new HashSet<ushort>());
+                            Dispatcher._oldtargets[vehicleID].Add(target);
                         }
-                        else if (target != 0)
-                            Dispatcher._master.Add(target, new Claimant(vehicleID, target));
+                        if (Dispatcher._master != null)
+                        {
+                            if (Dispatcher._master.ContainsKey(target))
+                            {
+                                if (Dispatcher._master[target].Truck != vehicleID)
+                                    Dispatcher._master[target] = new Claimant(vehicleID, target);
+                            }
+                            else if (target != 0)
+                                Dispatcher._master.Add(target, new Claimant(vehicleID, target));
+                        }
                         return;
                     }
                 }
@@ -189,14 +188,17 @@ namespace EnhancedGarbageTruckAI
                     Singleton<VehicleManager>.instance.m_vehicles.m_buffer[vehicleID].m_pathPositionIndex = pathPositionIndex;
                     Singleton<VehicleManager>.instance.m_vehicles.m_buffer[vehicleID].m_lastPathOffset = lastPathOffset;
                     Singleton<BuildingManager>.instance.m_buildings.m_buffer[(int)current].AddGuestVehicle(vehicleID, ref Singleton<VehicleManager>.instance.m_vehicles.m_buffer[vehicleID]);
-                    
-                    if (Dispatcher._master.ContainsKey(target))
+
+                    if (Dispatcher._master != null)
                     {
-                        if (Dispatcher._master[target].Truck != vehicleID)
-                            Dispatcher._master[target] = new Claimant(vehicleID, target);
+                        if (Dispatcher._master.ContainsKey(target))
+                        {
+                            if (Dispatcher._master[target].Truck != vehicleID)
+                                Dispatcher._master[target] = new Claimant(vehicleID, target);
+                        }
+                        else if (target != 0)
+                            Dispatcher._master.Add(target, new Claimant(vehicleID, target));
                     }
-                    else if (target != 0)
-                        Dispatcher._master.Add(target, new Claimant(vehicleID, target));
                 }
                 else
                 {

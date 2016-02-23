@@ -65,20 +65,16 @@
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Cities_Skylines\Cities_Data\Managed\UnityEngine.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.UI">
-      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Cities_Skylines\Cities_Data\Managed\UnityEngine.UI.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\text.txt" />
+    <EmbeddedResource Include="Resources\text_ja.txt" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CS-SkylinesOverwatch\SkylinesOverwatch.csproj">
       <Project>{8c40a7d8-724b-40d9-a149-c938cb210e3c}</Project>
       <Name>SkylinesOverwatch</Name>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Resources\text.txt" />
-    <EmbeddedResource Include="Resources\text_ja.txt" />
   </ItemGroup>
   <PropertyGroup>
     <PostBuildEvent>mkdir "%25LOCALAPPDATA%25\Colossal Order\Cities_Skylines\Addons\Mods\$(SolutionName)"
