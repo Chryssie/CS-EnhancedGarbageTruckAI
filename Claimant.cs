@@ -11,7 +11,7 @@ namespace EnhancedGarbageTruckAI
         private float _distance;
         private DateTime _lastUpdated;
 
-        public ushort Truck { get { return _id; } }
+        public ushort Vehicle { get { return _id; } }
 
         public float Distance 
         { 

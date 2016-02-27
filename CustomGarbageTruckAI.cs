@@ -25,21 +25,36 @@ namespace EnhancedGarbageTruckAI
             }
             else
             {
-                if(Identity.ModConf.MinimizeGarbageTrucks && (data.m_flags & (Vehicle.Flags.Spawned)) == Vehicle.Flags.None)
+                if((data.m_flags & (Vehicle.Flags.Spawned)) == Vehicle.Flags.None)
                 {
+                    if (Identity.ModConf.MinimizeGarbageTrucks)
+                    {
+                        if (Dispatcher._landfills != null && Dispatcher._landfills.ContainsKey(data.m_sourceBuilding))
+                        {
+                            if (Dispatcher._landfills[data.m_sourceBuilding]._primary.Count > 0 || Dispatcher._landfills[data.m_sourceBuilding]._secondary.Count > 0 || Dispatcher._landfills[data.m_sourceBuilding]._checkups.Count > 0)
+                                if ((!Dispatcher._landfills[data.m_sourceBuilding]._primary.Contains(targetBuilding) && !Dispatcher._landfills[data.m_sourceBuilding]._secondary.Contains(targetBuilding)) || !Helper.IsBuildingWithGarbage(targetBuilding))
+                                {
+                                    data.Unspawn(vehicleID);
+                                    return;
+                                }
+                        }
+                        else
+                        {
+                            data.Unspawn(vehicleID);
+                            return;
+                        }
+                    }
+
                     if (Dispatcher._landfills != null && Dispatcher._landfills.ContainsKey(data.m_sourceBuilding))
                     {
-                        if(Dispatcher._landfills[data.m_sourceBuilding]._primary.Count > 0 || Dispatcher._landfills[data.m_sourceBuilding]._secondary.Count > 0 || Dispatcher._landfills[data.m_sourceBuilding]._checkups.Count > 0)
-                            if ((!Dispatcher._landfills[data.m_sourceBuilding]._primary.Contains(targetBuilding) && !Dispatcher._landfills[data.m_sourceBuilding]._secondary.Contains(targetBuilding)) || !Helper.IsBuildingWithGarbage(targetBuilding))
-                            {
-                                data.Unspawn(vehicleID);
-                                return;
-                            }
-                    }
-                    else
-                    {
-                        data.Unspawn(vehicleID);
-                        return;
+                        int max, now;
+                        Dispatcher._landfills[data.m_sourceBuilding].CaluculateWorkingVehicles(out max, out now);
+
+                        if (now > max)
+                        {
+                            data.Unspawn(vehicleID);
+                            return;
+                        }
                     }
                 }
                 ushort current = data.m_targetBuilding;
@@ -49,9 +64,9 @@ namespace EnhancedGarbageTruckAI
                 byte lastPathOffset = data.m_lastPathOffset;
                 ushort target = targetBuilding;
                 
-                int truckStatus = Dispatcher.GetGarbageTruckStatus(ref data);
+                int vehicleStatus = Dispatcher.GetGarbageTruckStatus(ref data);
                 int retry_max = 1;
-                if (truckStatus == Dispatcher.VEHICLE_STATUS_GARBAGE_WAIT)
+                if (vehicleStatus == Dispatcher.VEHICLE_STATUS_GARBAGE_WAIT)
                 {
                     if(Dispatcher._oldtargets != null) Dispatcher._oldtargets.Remove(vehicleID);
                     retry_max = 20;
@@ -148,7 +163,7 @@ namespace EnhancedGarbageTruckAI
                     }
 
                     if ((targetBuilding == 0 ||
-                        (truckStatus != Dispatcher.VEHICLE_STATUS_GARBAGE_COLLECT && truckStatus != Dispatcher.VEHICLE_STATUS_GARBAGE_WAIT)))
+                        (vehicleStatus != Dispatcher.VEHICLE_STATUS_GARBAGE_COLLECT && vehicleStatus != Dispatcher.VEHICLE_STATUS_GARBAGE_WAIT)))
                     {
                         if (!StartPathFind(vehicleID, ref data))
                         {
@@ -169,7 +184,7 @@ namespace EnhancedGarbageTruckAI
                         {
                             if (Dispatcher._master.ContainsKey(target))
                             {
-                                if (Dispatcher._master[target].Truck != vehicleID)
+                                if (Dispatcher._master[target].Vehicle != vehicleID)
                                     Dispatcher._master[target] = new Claimant(vehicleID, target);
                             }
                             else if (target != 0)
@@ -179,7 +194,7 @@ namespace EnhancedGarbageTruckAI
                     }
                 }
 
-                if (truckStatus == Dispatcher.VEHICLE_STATUS_GARBAGE_COLLECT)
+                if (vehicleStatus == Dispatcher.VEHICLE_STATUS_GARBAGE_COLLECT)
                 {
                     target = current;
                     RemoveTarget(vehicleID, ref Singleton<VehicleManager>.instance.m_vehicles.m_buffer[vehicleID]);
@@ -193,7 +208,7 @@ namespace EnhancedGarbageTruckAI
                     {
                         if (Dispatcher._master.ContainsKey(target))
                         {
-                            if (Dispatcher._master[target].Truck != vehicleID)
+                            if (Dispatcher._master[target].Vehicle != vehicleID)
                                 Dispatcher._master[target] = new Claimant(vehicleID, target);
                         }
                         else if (target != 0)

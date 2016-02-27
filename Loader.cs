@@ -5,7 +5,7 @@ namespace EnhancedGarbageTruckAI
 {
     public class Loader : LoadingExtensionBase
     {
-        List<RedirectCallsState> m_redirectionStates = new List<RedirectCallsState>();
+        public static List<RedirectCallsState> m_redirectionStates = new List<RedirectCallsState>();
 
         Helper _helper;
 
@@ -21,10 +21,6 @@ namespace EnhancedGarbageTruckAI
             base.OnLevelLoaded(mode);
             if (mode == LoadMode.NewGame || mode == LoadMode.LoadGame)
             {
-                if (Helper.IsOverwatched())
-                {
-                    RedirectionHelper.RedirectCalls(m_redirectionStates, typeof(GarbageTruckAI), typeof(CustomGarbageTruckAI), "SetTarget", 3);
-                }
                 _helper.GameLoaded = true;
             }
         }
@@ -37,6 +33,7 @@ namespace EnhancedGarbageTruckAI
             {
                 RedirectionHelper.RevertRedirect(rcs);
             }
+            m_redirectionStates.Clear();
         }
     }
 }

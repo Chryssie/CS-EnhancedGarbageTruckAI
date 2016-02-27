@@ -13,7 +13,7 @@ namespace EnhancedGarbageTruckAI
 
         public string Description
         {
-            get { return "Oversees trash services to ensure that garbage trucks are dispatched in an efficient manner."; }
+            get { return "Oversees trash services to ensure that garbage vehicles are dispatched in an efficient manner."; }
         }
 
         public const string SETTINGFILENAME = "EnhancedGarbageTruckAI.xml";
