@@ -55,7 +55,7 @@ namespace EnhancedGarbageTruckAI
 			}
 			else
 			{
-				DebugOutputPanel.AddMessage(PluginManager.MessageType.Message, String.Format("RedirectCalls失敗:" + methodName));
+				DebugOutputPanel.AddMessage(PluginManager.MessageType.Message, String.Format("Failed RedirectCalls:" + methodName));
 			}
 		}
 

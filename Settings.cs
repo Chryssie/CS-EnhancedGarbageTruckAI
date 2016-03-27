@@ -4,7 +4,7 @@
     {
         private Settings()
         {
-            Tag = "Enhanced Garbage Truck AI [Fixed for v1.3+]";
+            Tag = "Enhanced Garbage Truck AI [Fixed for v1.4+]";
 
             ImmediateRange1 = 4000;
             ImmediateRange2 = 20000;

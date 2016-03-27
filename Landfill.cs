@@ -477,6 +477,9 @@ namespace EnhancedGarbageTruckAI
                     }
                 }
 
+                if (_oldtargets.ContainsKey(vehicleID) && _oldtargets[vehicleID].Count > 5 && targetProblematicLevel >= candidateProblematicLevel)
+                    return target;
+
                 if (_master.ContainsKey(id) && _master[id].IsValid && _master[id].IsChallengable)
                 {
                     if (targetProblematicLevel > candidateProblematicLevel)
