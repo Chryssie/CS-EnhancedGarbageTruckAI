@@ -50,22 +50,33 @@ namespace EnhancedGarbageTruckAI
         }
 
         public static bool IsOverwatched()
-        {
-#if DEBUG
+		{
+			foreach (var plugin in PluginManager.instance.GetPluginsInfo())
+			{
+				if (!plugin.isEnabled)
+					continue;
+				foreach (var assembly in plugin.GetAssemblies())
+				{
+					try
+					{
+						var attributes = assembly.GetCustomAttributes(typeof(System.Runtime.InteropServices.GuidAttribute), false);
+						foreach (var attribute in attributes)
+						{
+							var guidAttribute = attribute as System.Runtime.InteropServices.GuidAttribute;
+							if (guidAttribute == null)
+								continue;
+							if (guidAttribute.Value == "837B2D75-956A-48B4-B23E-A07D77D55847")
+								return true;
+						}
+					}
+					catch (TypeLoadException)
+					{
+						// This occurs for some types, not sure why, but we should be able to just ignore them.
+					}
+				}
+			}
 
-            return true;
-
-#else
-
-            foreach (var plugin in PluginManager.instance.GetPluginsInfo())
-            {
-                if (plugin.name == "583538182" && plugin.publishedFileID.ToString() == "583538182")
-                    return plugin.isEnabled;
-            }
-
-            return false;
-
-#endif
-        }
+			return false;
+		}
     }
 }
