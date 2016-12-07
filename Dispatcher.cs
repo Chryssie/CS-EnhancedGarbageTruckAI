@@ -247,13 +247,16 @@ namespace EnhancedGarbageTruckAI
                     if (!_landfills.ContainsKey(v.m_sourceBuilding))
                         continue;
 
-                    if ((v.m_flags & (Vehicle.Flags.Stopped | Vehicle.Flags.WaitingSpace | Vehicle.Flags.WaitingPath | Vehicle.Flags.WaitingLoading | Vehicle.Flags.WaitingCargo)) != Vehicle.Flags.None) continue;
-                    if ((v.m_flags & (Vehicle.Flags.Spawned)) == Vehicle.Flags.None) continue;
-                    if (v.m_path == 0u) continue;
+					if (v.m_flags.IsFlagSet(Vehicle.Flags.Stopped) || v.m_flags.IsFlagSet(Vehicle.Flags.WaitingSpace) || v.m_flags.IsFlagSet(Vehicle.Flags.WaitingPath) || v.m_flags.IsFlagSet(Vehicle.Flags.WaitingLoading) || v.m_flags.IsFlagSet(Vehicle.Flags.WaitingCargo))
+						continue;
+					if (!v.m_flags.IsFlagSet(Vehicle.Flags.Spawned))
+						continue;
+                    if (v.m_path == 0u)
+						continue;
 
                     _PathfindCount.Remove(vehicleID);
 
-                    if ((v.m_flags & (Vehicle.Flags.WaitingTarget)) == Vehicle.Flags.None)
+                    if (!v.m_flags.IsFlagSet(Vehicle.Flags.WaitingTarget))
                     {
                         uint num3 = vehicleID & 7u;
                         if (num1 != num3 && num2 != num3)
@@ -324,7 +327,7 @@ namespace EnhancedGarbageTruckAI
 
             foreach (ushort vehicleID in data.GarbageTrucks)
             {
-                if ((Singleton<VehicleManager>.instance.m_vehicles.m_buffer[vehicleID].m_flags & Vehicle.Flags.WaitingPath) != Vehicle.Flags.None)
+                if (Singleton<VehicleManager>.instance.m_vehicles.m_buffer[vehicleID].m_flags.IsFlagSet(Vehicle.Flags.WaitingPath))
                 {
                     PathManager instance = Singleton<PathManager>.instance;
                     byte pathFindFlags = instance.m_pathUnits.m_buffer[(int)((UIntPtr)Singleton<VehicleManager>.instance.m_vehicles.m_buffer[vehicleID].m_path)].m_pathFindFlags;
@@ -344,7 +347,7 @@ namespace EnhancedGarbageTruckAI
                             _lasttargets.Remove(vehicleID);
                         }
                         else if ((vehicleStatus == VEHICLE_STATUS_GARBAGE_WAIT || vehicleStatus == VEHICLE_STATUS_GARBAGE_COLLECT)
-                            && ((Singleton<VehicleManager>.instance.m_vehicles.m_buffer[vehicleID].m_flags & (Vehicle.Flags.Spawned)) != Vehicle.Flags.None)
+                            && (Singleton<VehicleManager>.instance.m_vehicles.m_buffer[vehicleID].m_flags.IsFlagSet(Vehicle.Flags.Spawned))
                             && _landfills.ContainsKey(Singleton<VehicleManager>.instance.m_vehicles.m_buffer[vehicleID].m_sourceBuilding)
                             && (!_PathfindCount.ContainsKey(vehicleID) || _PathfindCount[vehicleID] < 20))
                         {
@@ -383,15 +386,15 @@ namespace EnhancedGarbageTruckAI
 
         public static int GetGarbageTruckStatus(ref Vehicle data)
         {
-            if ((data.m_flags & Vehicle.Flags.TransferToSource) == Vehicle.Flags.None)
+            if (!data.m_flags.IsFlagSet(Vehicle.Flags.TransferToSource))
             {
-                if ((data.m_flags & Vehicle.Flags.TransferToTarget) != Vehicle.Flags.None)
+                if (data.m_flags.IsFlagSet( Vehicle.Flags.TransferToTarget))
                 {
-                    if ((data.m_flags & Vehicle.Flags.GoingBack) != Vehicle.Flags.None)
+                    if (data.m_flags.IsFlagSet( Vehicle.Flags.GoingBack))
                     {
                         return VEHICLE_STATUS_GARBAGE_RETURN;
                     }
-                    if ((data.m_flags & Vehicle.Flags.WaitingTarget) != Vehicle.Flags.None)
+                    if (data.m_flags.IsFlagSet( Vehicle.Flags.WaitingTarget) )
                     {
                         return VEHICLE_STATUS_GARBAGE_UNLOAD;
                     }
@@ -402,11 +405,11 @@ namespace EnhancedGarbageTruckAI
                 }
                 return VEHICLE_STATUS_CONFUSED;
             }
-            if ((data.m_flags & Vehicle.Flags.GoingBack) != Vehicle.Flags.None)
+            if (data.m_flags.IsFlagSet( Vehicle.Flags.GoingBack))
             {
                 return VEHICLE_STATUS_GARBAGE_RETURN;
             }
-            if ((data.m_flags & Vehicle.Flags.WaitingTarget) != Vehicle.Flags.None)
+            if (data.m_flags.IsFlagSet( Vehicle.Flags.WaitingTarget))
             {
                 return VEHICLE_STATUS_GARBAGE_WAIT;
             }

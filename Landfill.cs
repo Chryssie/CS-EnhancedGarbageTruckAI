@@ -444,7 +444,7 @@ namespace EnhancedGarbageTruckAI
                 if (_master.ContainsKey(id) && _master[id].IsValid && _master[id].Vehicle != vehicleID)
                 {
                     Vehicle vehicle2 = Singleton<VehicleManager>.instance.m_vehicles.m_buffer[_master[id].Vehicle];
-                    if ((vehicle2.m_flags & Vehicle.Flags.Spawned) != Vehicle.Flags.None && vehicle2.m_path != 0
+                    if (vehicle2.m_flags.IsFlagSet(Vehicle.Flags.Spawned) && vehicle2.m_path != 0
                         && Singleton<PathManager>.instance.m_pathUnits.m_buffer[vehicle2.m_path].m_nextPathUnit == 0)
                     {
                         byte b = vehicle2.m_pathPositionIndex;
